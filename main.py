@@ -6,6 +6,7 @@ within the competition limits, then copies it unchanged to
 $MAKEFUN_OUTPUT_DIR/entry.png (default /output/entry.png).
 """
 
+import hashlib
 import os
 import shutil
 import struct
@@ -58,7 +59,16 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     target = os.path.join(out_dir, IMAGE)
     shutil.copyfile(source, target)
-    print(f"wrote {target}")
+    # Prove the graded file is byte-identical to the verified entry: a
+    # partial or corrupted copy must fail loudly instead of shipping.
+    with open(target, "rb") as handle:
+        copied = handle.read()
+    if hashlib.sha256(copied).hexdigest() != hashlib.sha256(data).hexdigest():
+        fail(f"{target} does not match {source} after copy")
+    size = png_size(data) if data.startswith(PNG_MAGIC) else None
+    dims = f"{size[0]}x{size[1]}" if size else "jpeg"
+    print(f"wrote {target} ({len(data)} bytes, {dims}, "
+          f"sha256 {hashlib.sha256(data).hexdigest()[:16]}...)")
 
 
 if __name__ == "__main__":
